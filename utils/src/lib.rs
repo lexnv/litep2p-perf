@@ -24,6 +24,10 @@ pub struct ServerOpts {
     /// The node key used to derive the server peer ID.
     #[clap(long, short)]
     pub node_key: String,
+
+    /// Enable QUIC transport.
+    #[clap(long, short, default_value = "false")]
+    pub quic: bool,
 }
 
 /// The client options.
@@ -40,6 +44,10 @@ pub struct ClientOpts {
     /// The downloaded bytes.
     #[clap(long)]
     pub download_bytes: usize,
+
+    /// Enable QUIC transport.
+    #[clap(long, short, default_value = "false")]
+    pub quic: bool,
 }
 
 /// The client options.
