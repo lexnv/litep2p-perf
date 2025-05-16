@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let secret_key = litep2p::crypto::ed25519::SecretKey::try_from_bytes(&mut bytes)?;
             let litep2p_config = litep2p::config::ConfigBuilder::new()
                 .with_keypair(secret_key.into())
-                .with_tcp(litep2p::transport::tcp::config::Config {
+                .with_websocket(litep2p::transport::websocket::config::Config {
                     listen_addresses: vec![server_opts
                         .listen_address
                         .parse()
@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let litep2p_config = litep2p::config::ConfigBuilder::new()
-        .with_tcp(litep2p::transport::tcp::config::Config {
+        .with_websocket(litep2p::transport::websocket::config::Config {
             reuse_port: true,
             nodelay: true,
             ..Default::default()

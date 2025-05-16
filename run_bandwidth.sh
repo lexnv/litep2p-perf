@@ -14,7 +14,8 @@ declare -A results_download_litep2p_libp2p
 
 SLEEP_TIME=1
 
-VALUES="1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304 8388608 16777216 33554432 67108864 134217728 268435456 536870912 1073741824"
+# VALUES="1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304 8388608 16777216 33554432 67108864 134217728 268435456 536870912 1073741824"
+VALUES="268435456"
 
 # ---------------------------------------------------------
 # Litep2p bandwidth test
@@ -23,7 +24,7 @@ VALUES="1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 20971
 cd litep2p
 
 # Start the server
-RUST_LOG=info cargo run -- server --listen-address "/ip6/::/tcp/33333" --node-key "secret" > /dev/null 2>&1 &
+RUST_LOG=info cargo run -- server --listen-address "/ip6/::/tcp/33333/ws" --node-key "secret" > /dev/null 2>&1 &
 
 # Get the PID of the server
 SERVER_PID=$!
@@ -34,7 +35,7 @@ sleep $SLEEP_TIME
 
 cd ../litep2p
 for bytes in $VALUES; do
-    OUTPUT=$(RUST_LOG=info cargo run -- client --server-address "/ip6/::1/tcp/33333/p2p/12D3KooWBpZHDZu7YSbvPaPXKhkRNJvR7MkTJMQQAVBKx9mCqz3q" --upload-bytes $bytes --download-bytes $bytes | grep bandwidth)
+    OUTPUT=$(RUST_LOG=info cargo run -- client --server-address "/ip6/::1/tcp/33333/ws/p2p/12D3KooWBpZHDZu7YSbvPaPXKhkRNJvR7MkTJMQQAVBKx9mCqz3q" --upload-bytes $bytes --download-bytes $bytes | grep bandwidth)
 
     result_line=$(echo "$OUTPUT" | cut -d ' ' -f5-13)
     echo $result_line
@@ -48,6 +49,8 @@ done
 
 # Kill the server
 kill $SERVER_PID
+
+exit 0
 
 # ---------------------------------------------------------
 # Libp2p bandwidth test
