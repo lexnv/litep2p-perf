@@ -3,6 +3,8 @@ members = [
     "libp2p",
     "litep2p",
     "utils",
+    "smoldot-perf",
+    "smoldot-automation",
 ]
 
 resolver = "2"

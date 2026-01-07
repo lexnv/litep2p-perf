@@ -1,4 +1,3 @@
-use std::time::Duration;
 use clap::Parser as ClapParser;
 
 use utils::Command;

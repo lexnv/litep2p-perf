@@ -1,4 +1,8 @@
-#!/bin/bash
+#!/opt/homebrew/bin/bash
+##!/bin/bash
+
+declare -A results_upload_smoldot_litep2p_webrtc
+declare -A results_download_smoldot_litep2p_webrtc
 
 declare -A results_upload_litep2p_litep2p_tcp
 declare -A results_download_litep2p_litep2p_tcp
@@ -236,19 +240,54 @@ done
 # Kill the server
 kill $SERVER_PID
 
+# ---------------------------------------------------------
+# Smoldot -> Litep2p (WebRTC)
+# ---------------------------------------------------------
+
+cd ../litep2p
+# Start the server
+RUST_LOG=info cargo run -- server --transport-layer "webrtc" --listen-address "/ip4/127.0.0.1/udp/8888/webrtc-direct" --node-key "secret" > server.log 2>&1 &
+
+# Get the PID of the server
+SERVER_PID=$!
+
+echo "Running bandwidth test smoldot -> litep2p (WebRTC). Server pid $SERVER_PID..."
+# Wait for the server to start listening on the address.
+sleep $((SLEEP_TIME * 5))
+
+CERT_HASH=$(grep "/certhash/" server.log | cut -d '/' -f 8 | cut -d ' ' -f 1 | head -n 1)
+
+VALUES_ARRAY=($VALUES)
+cd ..
+
+for bytes in $VALUES; do
+    OUTPUT=$(cargo run --bin "smoldot-automation" -p smoldot-automation -- "/ip4/127.0.0.1/udp/8888/webrtc-direct/certhash/${CERT_HASH}/p2p/12D3KooWBpZHDZu7YSbvPaPXKhkRNJvR7MkTJMQQAVBKx9mCqz3q" $bytes $bytes | grep bandwidth)
+    echo $OUTPUT
+
+    uploaded_bandwidth=$(echo "$OUTPUT" | cut -d' ' -f8-9 | head -n 1)
+    results_upload_smoldot_litep2p_webrtc[$bytes]="$uploaded_bandwidth"
+
+    downloaded_bandwidth=$(echo "$OUTPUT" | cut -d' ' -f8-9 | tail -n 1)
+    results_download_smoldot_litep2p_webrtc[$bytes]="$downloaded_bandwidth"
+done
+
+# Kill the server
+kill $SERVER_PID
+rm litep2p/server.log
+
 # Markdown output
 echo
 echo "# Bandwidth Report"
-echo "| Operation  | Bytes      | Litep2p->Litep2p (TCP) | Libp2p->Libp2p (TCP) | Libp2p->Libp2p (WebRTC) | Libp2p->Litep2p (TCP) | Libp2p->Litep2p (WebRTC) | Litep2p->Libp2p (TCP) |"
-echo "|------------|------------|------------------------|----------------------|-------------------------|-----------------------|--------------------------|-----------------------|"
+echo "| Operation  | Bytes      | Litep2p->Litep2p (TCP) | Libp2p->Libp2p (TCP) | Libp2p->Libp2p (WebRTC) | Libp2p->Litep2p (TCP) | Libp2p->Litep2p (WebRTC) | Litep2p->Libp2p (TCP) | Smoldot -> Litep2p (WebRTC) |"
+echo "|------------|------------|------------------------|----------------------|-------------------------|-----------------------|--------------------------|-----------------------|-----------------------------|"
 
 for bytes in $VALUES; do
     fmt_bytes=$(numfmt --to=iec-i --suffix=B $bytes)
-    echo "| Uploaded   | $fmt_bytes | ${results_upload_litep2p_litep2p_tcp[$bytes]} | ${results_upload_libp2p_libp2p_tcp[$bytes]} | ${results_upload_libp2p_libp2p_webrtc[$bytes]} | ${results_upload_libp2p_litep2p_tcp[$bytes]} | ${results_upload_libp2p_litep2p_webrtc[$bytes]} | ${results_upload_litep2p_libp2p_tcp[$bytes]} |"
+    echo "| Uploaded   | $fmt_bytes | ${results_upload_litep2p_litep2p_tcp[$bytes]} | ${results_upload_libp2p_libp2p_tcp[$bytes]} | ${results_upload_libp2p_libp2p_webrtc[$bytes]} | ${results_upload_libp2p_litep2p_tcp[$bytes]} | ${results_upload_libp2p_litep2p_webrtc[$bytes]} | ${results_upload_litep2p_libp2p_tcp[$bytes]} | ${results_upload_smoldot_litep2p_webrtc[$bytes]} |"
 done
 
 
 for bytes in $VALUES; do
     fmt_bytes=$(numfmt --to=iec-i --suffix=B $bytes)
-    echo "| Downloaded | $fmt_bytes | ${results_download_litep2p_litep2p_tcp[$bytes]} | ${results_download_libp2p_libp2p_tcp[$bytes]} | ${results_download_libp2p_libp2p_webrtc[$bytes]} | ${results_download_libp2p_litep2p_tcp[$bytes]} | ${results_download_libp2p_litep2p_webrtc[$bytes]} | ${results_download_litep2p_libp2p_tcp[$bytes]} |"
+    echo "| Downloaded | $fmt_bytes | ${results_download_litep2p_litep2p_tcp[$bytes]} | ${results_download_libp2p_libp2p_tcp[$bytes]} | ${results_download_libp2p_libp2p_webrtc[$bytes]} | ${results_download_libp2p_litep2p_tcp[$bytes]} | ${results_download_libp2p_litep2p_webrtc[$bytes]} | ${results_download_litep2p_libp2p_tcp[$bytes]} | ${results_download_smoldot_litep2p_webrtc[$bytes]} |"
 done
