@@ -16,6 +16,7 @@ async fn write_u64<S: AsyncRead + AsyncWrite + Unpin + Send + 'static>(
     value: u64,
 ) -> Result<(), std::io::Error> {
     substream.write_all(&value.to_be_bytes()).await?;
+    substream.flush().await?;
     Ok(())
 }
 
@@ -43,6 +44,7 @@ async fn send_bytes<S: AsyncRead + AsyncWrite + Unpin + Send + 'static>(
     let mut total = 0;
     while total < to_send {
         substream.write_all(&buf).await?;
+        substream.flush().await?;
         total += buf.len() as u64;
     }
     Ok(())
@@ -60,6 +62,9 @@ pub async fn server_mode<S: AsyncRead + AsyncWrite + Unpin + Send + 'static>(
     let to_send = read_u64(&mut substream).await?;
     // Step 4. Send the upload bytes.
     send_bytes(&mut substream, to_send).await?;
+
+    // Step 5. Close the substream gracefully.
+    substream.close().await?;
 
     Ok(())
 }
@@ -95,6 +100,9 @@ pub async fn client_mode<S: AsyncRead + AsyncWrite + Unpin + Send + 'static>(
         elapsed.as_secs_f64(),
         utils::format_bandwidth(elapsed, download_bytes as usize)
     );
+
+    // Step 5. Close the substream gracefully.
+    substream.close().await?;
 
     Ok(())
 }

@@ -42,6 +42,7 @@ impl Perf {
 
     async fn write_u64(substream: &mut Substream, value: u64) -> litep2p::Result<()> {
         substream.write_all(&value.to_be_bytes()).await?;
+        substream.flush().await?;
         Ok(())
     }
 
@@ -63,6 +64,7 @@ impl Perf {
         let mut total = 0;
         while total < to_send {
             substream.write_all(&buf).await?;
+            substream.flush().await?;
             total += buf.len() as u64;
         }
         Ok(())
@@ -78,6 +80,9 @@ impl Perf {
         let to_send = Self::read_u64(&mut substream).await?;
         // Step 4. Send the upload bytes.
         Self::send_bytes(&mut substream, to_send).await?;
+
+        // Step 5. Close the substream gracefully.
+        substream.close().await;
 
         Ok(())
     }
@@ -114,6 +119,9 @@ impl Perf {
             elapsed.as_secs_f64(),
             utils::format_bandwidth(elapsed, download_bytes as usize)
         );
+
+        // Step 5. Close the substream gracefully.
+        substream.close().await;
 
         Ok(())
     }

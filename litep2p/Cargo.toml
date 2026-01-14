@@ -11,6 +11,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing = "0.1.34"
 futures = "0.3.28"
 
-litep2p = { version = "0.10.0", features = ["websocket", "webrtc"] }
+litep2p = { git = "https://github.com/ChainSafe/litep2p.git", rev = "85784876c0a196cafc6663fb9447a8cbd78a51cf", features = ["websocket", "webrtc"] }
 
 utils = { path = "../utils" }

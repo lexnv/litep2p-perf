@@ -6,3 +6,6 @@ members = [
 ]
 
 resolver = "2"
+
+[patch.crates-io]
+webrtc = { git = "https://github.com/haikoschol/webrtc.git",  branch = "always-send-ice-keepalives" }
