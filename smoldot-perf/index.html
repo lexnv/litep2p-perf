@@ -203,6 +203,11 @@
         }
       }
     );
+
+    // This is added to the DOM so smoldot-automation can wait for it before shutting down the browser.
+    const finishedDiv = document.createElement('div');
+    finishedDiv.id = 'perf-finished';
+    document.getElementById('output').appendChild(finishedDiv);
   }
 
   globalThis.sendResults = sendResults;

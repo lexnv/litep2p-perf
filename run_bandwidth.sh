@@ -234,7 +234,6 @@ for bytes in $VALUES; do
 
     downloaded_bandwidth=$(echo "$result_line" | cut -d' ' -f8-9 | tail -n 1)
     results_download_litep2p_libp2p_tcp[$bytes]="$downloaded_bandwidth"
-
 done
 
 # Kill the server
@@ -256,8 +255,6 @@ echo "Running bandwidth test smoldot -> litep2p (WebRTC). Server pid $SERVER_PID
 sleep $((SLEEP_TIME * 5))
 
 CERT_HASH=$(grep "/certhash/" server.log | cut -d '/' -f 8 | cut -d ' ' -f 1 | head -n 1)
-
-VALUES_ARRAY=($VALUES)
 cd ..
 
 for bytes in $VALUES; do
@@ -265,9 +262,15 @@ for bytes in $VALUES; do
     echo $OUTPUT
 
     uploaded_bandwidth=$(echo "$OUTPUT" | cut -d' ' -f8-9 | head -n 1)
+    if [ -z "$uploaded_bandwidth" ]; then
+        uploaded_bandwidth="fail"
+    fi
     results_upload_smoldot_litep2p_webrtc[$bytes]="$uploaded_bandwidth"
 
     downloaded_bandwidth=$(echo "$OUTPUT" | cut -d' ' -f8-9 | tail -n 1)
+    if [ -z "$downloaded_bandwidth" ]; then
+        downloaded_bandwidth="fail"
+    fi
     results_download_smoldot_litep2p_webrtc[$bytes]="$downloaded_bandwidth"
 done
 

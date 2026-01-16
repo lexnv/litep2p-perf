@@ -7,6 +7,10 @@ use std::time::Duration;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 fn main() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
     let args: Vec<String> = env::args().collect();
     let params = parse_args(&args)?;
     let host = "127.0.0.1:8082";
@@ -15,11 +19,11 @@ fn main() -> Result<()> {
 
     let (done_tx, done_rx) = mpsc::channel();
 
-    thread::spawn(|| {
+    thread::spawn(move || {
         run_server(host, done_tx);
     });
 
-    println!("Server is running. Press Ctrl+C to stop.");
+    tracing::debug!("Server is running. Press Ctrl+C to stop.");
 
     thread::sleep(Duration::from_secs(2));
     run_browser(host, &params.peer, params.upload_bytes, params.download_bytes)?;
@@ -54,7 +58,7 @@ struct Durations {
 }
 
 fn run_server(host: &str, tx: mpsc::Sender<Durations>) {
-    println!("Starting web server on {}", host);
+    tracing::debug!("Starting web server on {}", host);
 
     rouille::start_server(host, move |request| {
         if request.method() == "POST" && request.url() == "/results" {
@@ -87,12 +91,28 @@ fn run_browser(
         download_bytes,
     );
 
-    println!("Opening browser at {}", url);
-    Command::new("open").arg(url).status()?;
+    tracing::debug!("Opening browser at {}", url);
+
+    let mut options = headless_chrome::LaunchOptions::default();
+    options.idle_browser_timeout = Duration::from_secs(120);
+
+    let browser = headless_chrome::Browser::new(options)?;
+    let tab = browser.new_tab()?;
+
+    tab.navigate_to(&url)?;
+    tab.wait_until_navigated()?;
+    tab.wait_for_element("#perf-finished")?;
     Ok(())
 }
 
 fn build_wasm() -> Result<()> {
+    if !is_wasm_target_installed()? {
+        return Err("wasm32-unknown-unknown target is not installed. Run 'rustup target add \
+        wasm32-unknown-unknown'".into());
+    }
+
+    check_wasm_bindgen_version()?;
+
     let cwd = env::current_dir()?;
 
     let smoldot_dir = cwd.join("smoldot-perf");
@@ -125,7 +145,7 @@ fn build_wasm() -> Result<()> {
     if !output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("{}\n{}", stdout, stderr);
+        tracing::error!("{}\n{}", stdout, stderr);
         return Err("build failed".into());
     }
 
@@ -155,4 +175,52 @@ fn parse_args(args: &[String]) -> Result<Params> {
     })?;
 
     Ok(Params { peer: peer.to_string(), upload_bytes, download_bytes })
+}
+
+fn is_wasm_target_installed() -> Result<bool> {
+    let output = Command::new("rustup")
+        .args(&["target", "list", "--installed"])
+        .output()?;
+
+    if !output.status.success() {
+        return Err("failed to execute rustup".into());
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.lines().any(|line| line.contains("wasm32-unknown-unknown")))
+}
+
+fn check_wasm_bindgen_version() -> Result<()> {
+    let manifest_content = std::fs::read_to_string("smoldot-perf/Cargo.toml")?;
+    let expected_version = manifest_content
+        .lines()
+        .find(|line| line.trim().starts_with("wasm-bindgen ="))
+        .and_then(|line| line.split('"').nth(1))
+        .ok_or("Could not find wasm-bindgen version in smoldot-perf/Cargo.toml")?;
+
+    let output = Command::new("wasm-bindgen")
+        .arg("--version")
+        .output()
+        .map_err(|_| format!(
+            "wasm-bindgen-cli is not installed. Run 'cargo install wasm-bindgen-cli@={}'",
+            expected_version,
+        ))?;
+
+    let actual_version_output = String::from_utf8_lossy(&output.stdout);
+    let actual_version = actual_version_output
+        .split_whitespace()
+        .nth(1)
+        .ok_or("Could not parse wasm-bindgen version")?;
+
+    if actual_version != expected_version {
+        return Err(format!(
+            "wasm-bindgen-cli version mismatch. Expected {}, found {}. Run 'cargo install \
+            wasm-bindgen-cli@={}'",
+            expected_version,
+            actual_version,
+            expected_version,
+        ).into());
+    }
+
+    Ok(())
 }
