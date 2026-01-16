@@ -1,5 +1,5 @@
-use std::process::Command;
 use std::env;
+use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -26,11 +26,17 @@ fn main() -> Result<()> {
     tracing::debug!("Server is running. Press Ctrl+C to stop.");
 
     thread::sleep(Duration::from_secs(2));
-    run_browser(host, &params.peer, params.upload_bytes, params.download_bytes)?;
+    run_browser(
+        host,
+        &params.peer,
+        params.upload_bytes,
+        params.download_bytes,
+    )?;
 
     let durations = done_rx.recv()?;
 
-    println!("Uploaded {} bytes in {:.4}s bandwidth {}",
+    println!(
+        "Uploaded {} bytes in {:.4}s bandwidth {}",
         utils::format_bytes(params.upload_bytes as usize),
         durations.upload_seconds,
         utils::format_bandwidth(
@@ -39,7 +45,8 @@ fn main() -> Result<()> {
         )
     );
 
-    println!("Downloaded {} bytes in {:.4}s bandwidth {}",
+    println!(
+        "Downloaded {} bytes in {:.4}s bandwidth {}",
         utils::format_bytes(params.download_bytes as usize),
         durations.download_seconds,
         utils::format_bandwidth(
@@ -77,18 +84,10 @@ fn run_server(host: &str, tx: mpsc::Sender<Durations>) {
     });
 }
 
-fn run_browser(
-    host: &str,
-    peer: &str,
-    upload_bytes: u64,
-    download_bytes: u64,
-) -> Result<()> {
+fn run_browser(host: &str, peer: &str, upload_bytes: u64, download_bytes: u64) -> Result<()> {
     let url = format!(
         "http://{}/index.html?peer={}&upload_bytes={}&download_bytes={}&autorun=true",
-        host,
-        peer,
-        upload_bytes,
-        download_bytes,
+        host, peer, upload_bytes, download_bytes,
     );
 
     tracing::debug!("Opening browser at {}", url);
@@ -107,8 +106,11 @@ fn run_browser(
 
 fn build_wasm() -> Result<()> {
     if !is_wasm_target_installed()? {
-        return Err("wasm32-unknown-unknown target is not installed. Run 'rustup target add \
-        wasm32-unknown-unknown'".into());
+        return Err(
+            "wasm32-unknown-unknown target is not installed. Run 'rustup target add \
+        wasm32-unknown-unknown'"
+                .into(),
+        );
     }
 
     check_wasm_bindgen_version()?;
@@ -137,8 +139,10 @@ fn build_wasm() -> Result<()> {
     // generate wasm/js bindings
     let output = Command::new("wasm-bindgen")
         .current_dir(cwd)
-        .arg("--target").arg("web")
-        .arg("--out-dir").arg(&output_dir)
+        .arg("--target")
+        .arg("web")
+        .arg("--out-dir")
+        .arg(&output_dir)
         .arg(&wasm_path)
         .output()?;
 
@@ -167,14 +171,24 @@ fn parse_args(args: &[String]) -> Result<Params> {
     let peer = &args[1];
 
     let upload_bytes = args[2].parse::<u64>().map_err(|_| {
-        format!("Error: 'upload_bytes' must be a valid positive integer (found: '{}')", args[2])
+        format!(
+            "Error: 'upload_bytes' must be a valid positive integer (found: '{}')",
+            args[2]
+        )
     })?;
 
     let download_bytes = args[3].parse::<u64>().map_err(|_| {
-        format!("Error: 'download_bytes' must be a valid positive integer (found: '{}')", args[3])
+        format!(
+            "Error: 'download_bytes' must be a valid positive integer (found: '{}')",
+            args[3]
+        )
     })?;
 
-    Ok(Params { peer: peer.to_string(), upload_bytes, download_bytes })
+    Ok(Params {
+        peer: peer.to_string(),
+        upload_bytes,
+        download_bytes,
+    })
 }
 
 fn is_wasm_target_installed() -> Result<bool> {
@@ -187,7 +201,9 @@ fn is_wasm_target_installed() -> Result<bool> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(stdout.lines().any(|line| line.contains("wasm32-unknown-unknown")))
+    Ok(stdout
+        .lines()
+        .any(|line| line.contains("wasm32-unknown-unknown")))
 }
 
 fn check_wasm_bindgen_version() -> Result<()> {
@@ -201,10 +217,12 @@ fn check_wasm_bindgen_version() -> Result<()> {
     let output = Command::new("wasm-bindgen")
         .arg("--version")
         .output()
-        .map_err(|_| format!(
-            "wasm-bindgen-cli is not installed. Run 'cargo install wasm-bindgen-cli@={}'",
-            expected_version,
-        ))?;
+        .map_err(|_| {
+            format!(
+                "wasm-bindgen-cli is not installed. Run 'cargo install wasm-bindgen-cli@={}'",
+                expected_version,
+            )
+        })?;
 
     let actual_version_output = String::from_utf8_lossy(&output.stdout);
     let actual_version = actual_version_output
@@ -216,10 +234,9 @@ fn check_wasm_bindgen_version() -> Result<()> {
         return Err(format!(
             "wasm-bindgen-cli version mismatch. Expected {}, found {}. Run 'cargo install \
             wasm-bindgen-cli@={}'",
-            expected_version,
-            actual_version,
-            expected_version,
-        ).into());
+            expected_version, actual_version, expected_version,
+        )
+        .into());
     }
 
     Ok(())

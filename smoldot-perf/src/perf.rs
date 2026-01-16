@@ -1,7 +1,7 @@
-use smoldot::libp2p::connection::multistream_select;
-use smoldot::libp2p::read_write::ReadWrite;
 use crate::Instant;
 use crate::perf::PerfStreamInner::Negotiating;
+use smoldot::libp2p::connection::multistream_select;
+use smoldot::libp2p::read_write::ReadWrite;
 use web_sys::console;
 
 pub const PROTOCOL_NAME: &str = "/litep2p-perf/1.0.0";
@@ -12,7 +12,7 @@ pub(crate) struct PerfStream {
 
     upload_bytes: u64,
     download_bytes: u64,
-    inner: PerfStreamInner
+    inner: PerfStreamInner,
 }
 
 impl PerfStream {
@@ -26,10 +26,7 @@ impl PerfStream {
         }
     }
 
-    pub fn read_write(
-        self,
-        read_write: &mut ReadWrite<Instant>,
-    ) -> Option<Self> {
+    pub fn read_write(self, read_write: &mut ReadWrite<Instant>) -> Option<Self> {
         let upload_bytes = self.upload_bytes;
         let download_bytes = self.download_bytes;
         let mut upload_duration = self.upload_duration;
@@ -41,7 +38,7 @@ impl PerfStream {
                     upload_duration = upload.into();
                     download_duration = download.into();
                 }
-                _ => {},
+                _ => {}
             }
 
             PerfStream {
@@ -54,42 +51,45 @@ impl PerfStream {
         })
     }
 
-    fn read_write2(
-        self,
-        read_write: &mut ReadWrite<Instant>,
-    ) -> Option<PerfStreamInner> {
+    fn read_write2(self, read_write: &mut ReadWrite<Instant>) -> Option<PerfStreamInner> {
         match self.inner {
             Negotiating(nego) => {
                 console::log_1(&"PerfStream::read_write2(): negotiating...".into());
 
                 match nego.read_write(read_write) {
-                    Ok(multistream_select::Negotiation::InProgress(nego)) =>
-                        Some(Negotiating(nego)),
+                    Ok(multistream_select::Negotiation::InProgress(nego)) => {
+                        Some(Negotiating(nego))
+                    }
                     Ok(multistream_select::Negotiation::Success) => {
                         console::log_1(&"PerfStream::read_write2(): done negotiating!".into());
                         read_write.wake_up_asap();
                         Some(PerfStreamInner::NumberOfBytesUpload)
-                    },
+                    }
                     Ok(multistream_select::Negotiation::NotAvailable) => None, // log?
                     Err(err) => {
                         console::log_1(&format!("kaput: {:?}", err).into());
                         None
-                    },
-                    _ => unreachable!("probably...")
+                    }
+                    _ => unreachable!("probably..."),
                 }
             }
             PerfStreamInner::NumberOfBytesUpload => {
-                console::log_1(&"PerfStream::read_write2(): sending number of bytes, upload".into());
+                console::log_1(
+                    &"PerfStream::read_write2(): sending number of bytes, upload".into(),
+                );
                 read_write.write_out(Vec::from(self.upload_bytes.to_be_bytes()));
                 read_write.wake_up_asap();
                 Some(PerfStreamInner::BytesUpload(self.upload_bytes, None))
-            },
+            }
             PerfStreamInner::BytesUpload(expected_bytes, mut started_at) => {
                 if expected_bytes == self.upload_bytes {
-                    console::log_1(&format!(
-                        "PerfStream::read_write2(): starting upload of {} bytes",
-                        self.upload_bytes,
-                    ).into());
+                    console::log_1(
+                        &format!(
+                            "PerfStream::read_write2(): starting upload of {} bytes",
+                            self.upload_bytes,
+                        )
+                        .into(),
+                    );
 
                     started_at = Some(read_write.now);
                 }
@@ -97,11 +97,13 @@ impl PerfStream {
                 let chunk_size: usize = match read_write.write_bytes_queueable {
                     Some(wbq) => {
                         if wbq == 0 {
-                            console::log_1(&"PerfStream::read_write2(): zero bytes queueable".into());
+                            console::log_1(
+                                &"PerfStream::read_write2(): zero bytes queueable".into(),
+                            );
                             return Some(PerfStreamInner::BytesUpload(expected_bytes, started_at));
                         }
                         std::cmp::min(wbq, 1024)
-                    },
+                    }
                     None => {
                         console::log_1(&"PerfStream::read_write2(): no bytes queueable".into());
                         return None;
@@ -119,9 +121,11 @@ impl PerfStream {
                     let upload_duration = read_write.now - started_at.unwrap();
                     Some(PerfStreamInner::NumberOfBytesDownload(upload_duration))
                 }
-            },
+            }
             PerfStreamInner::NumberOfBytesDownload(upload_duration) => {
-                console::log_1(&"PerfStream::read_write2(): sending number of bytes, download".into());
+                console::log_1(
+                    &"PerfStream::read_write2(): sending number of bytes, download".into(),
+                );
                 read_write.write_out(Vec::from(self.download_bytes.to_be_bytes()));
 
                 // FIXME: Including this breaks receiving the download bytes.
@@ -130,22 +134,34 @@ impl PerfStream {
                 // This should cause WebRtcFraming to include the FIN flag in the outgoing message.
                 // read_write.write_bytes_queueable = None;
 
-                Some(PerfStreamInner::BytesDownload(self.download_bytes, upload_duration, None))
-            },
+                Some(PerfStreamInner::BytesDownload(
+                    self.download_bytes,
+                    upload_duration,
+                    None,
+                ))
+            }
             PerfStreamInner::BytesDownload(expected_bytes, upload_duration, mut started_at) => {
                 if expected_bytes == self.download_bytes {
-                    console::log_1(&format!(
-                        "PerfStream::read_write2(): starting download of {} bytes",
-                        self.download_bytes,
-                    ).into());
+                    console::log_1(
+                        &format!(
+                            "PerfStream::read_write2(): starting download of {} bytes",
+                            self.download_bytes,
+                        )
+                        .into(),
+                    );
 
                     started_at = Some(read_write.now);
                 }
 
-                let remaining_bytes = expected_bytes.saturating_sub(read_write.incoming_buffer.len() as u64);
+                let remaining_bytes =
+                    expected_bytes.saturating_sub(read_write.incoming_buffer.len() as u64);
                 if remaining_bytes > 0 {
                     read_write.discard_all_incoming();
-                    Some(PerfStreamInner::BytesDownload(remaining_bytes, upload_duration, started_at))
+                    Some(PerfStreamInner::BytesDownload(
+                        remaining_bytes,
+                        upload_duration,
+                        started_at,
+                    ))
                 } else {
                     let download_duration = read_write.now - started_at.unwrap();
 
@@ -157,7 +173,7 @@ impl PerfStream {
 
                     Some(PerfStreamInner::Done(upload_duration, download_duration))
                 }
-            },
+            }
             PerfStreamInner::Done(_, _) => None,
         }
     }
@@ -182,8 +198,10 @@ enum PerfStreamInner {
 
 impl PerfStreamInner {
     fn new() -> Self {
-        Negotiating(multistream_select::InProgress::new(multistream_select::Config::Dialer {
-            requested_protocol: PROTOCOL_NAME.to_string(),
-        }))
+        Negotiating(multistream_select::InProgress::new(
+            multistream_select::Config::Dialer {
+                requested_protocol: PROTOCOL_NAME.to_string(),
+            },
+        ))
     }
 }

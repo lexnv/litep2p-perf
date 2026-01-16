@@ -1,20 +1,20 @@
 mod perf;
 
 use rand::{RngCore, SeedableRng, rngs::StdRng};
-use std::cell::RefCell;
-use std::fmt::{Display, Formatter};
-use std::rc::Rc;
-use std::time::Duration;
 use smoldot::libp2p::{
     collection,
     connection::{noise, webrtc_framing},
     read_write::ReadWrite,
 };
+use std::cell::RefCell;
+use std::fmt::{Display, Formatter};
+use std::rc::Rc;
+use std::time::Duration;
 
 use smoldot::libp2p::collection::ConnectionId;
+use smoldot::libp2p::connection::webrtc_framing::Error;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
-use smoldot::libp2p::connection::webrtc_framing::Error;
 
 #[wasm_bindgen]
 extern "C" {
@@ -26,10 +26,7 @@ extern "C" {
     fn setGlue(glue: js_sys::Object);
 
     #[wasm_bindgen(catch)]
-    async fn dialWebRtcDirect(
-        address: String,
-        certificate: JsValue,
-    ) -> Result<JsValue, JsValue>;
+    async fn dialWebRtcDirect(address: String, certificate: JsValue) -> Result<JsValue, JsValue>;
 
     #[wasm_bindgen(catch)]
     fn sendTo(channel_id: u64, data: &[u8]) -> Result<(), JsValue>;
@@ -73,7 +70,7 @@ struct Instant(u64);
 
 impl Instant {
     fn now() -> Self {
-        // performance.now() returns fractional milliseconds. 
+        // performance.now() returns fractional milliseconds.
         // Multiplying by 1000 gives us microsecond precision.
         Self((now().as_f64().unwrap() * 1000.0) as u64)
     }
@@ -188,7 +185,7 @@ impl Client {
                 &JsValue::from_str("onDatachannelOpen"),
                 func.as_ref().unchecked_ref(),
             )
-                .unwrap();
+            .unwrap();
             func.forget();
         }
 
@@ -207,7 +204,7 @@ impl Client {
                 &JsValue::from_str("onDatachannelReady"),
                 func.as_ref().unchecked_ref(),
             )
-                .unwrap();
+            .unwrap();
             func.forget();
         }
 
@@ -226,7 +223,7 @@ impl Client {
                 &JsValue::from_str("onDatachannelClose"),
                 func.as_ref().unchecked_ref(),
             )
-                .unwrap();
+            .unwrap();
             func.forget();
         }
 
@@ -246,7 +243,7 @@ impl Client {
                 &JsValue::from_str("onDatachannelError"),
                 func.as_ref().unchecked_ref(),
             )
-                .unwrap();
+            .unwrap();
             func.forget();
         }
 
@@ -265,9 +262,10 @@ impl Client {
                     } else if this.perf_channel.is_some_and(|c| c == channel_id) {
                         this.on_message(channel_id, &data);
                     } else if !this.handshake_done {
-                        console::log_1(&format!(
-                            "got message on unknown channel {channel_id}. ignoring"
-                        ).into());
+                        console::log_1(
+                            &format!("got message on unknown channel {channel_id}. ignoring")
+                                .into(),
+                        );
                     }
                 },
             );
@@ -276,7 +274,7 @@ impl Client {
                 &JsValue::from_str("onMessage"),
                 func.as_ref().unchecked_ref(),
             )
-                .unwrap();
+            .unwrap();
             func.forget();
         }
 
@@ -284,16 +282,15 @@ impl Client {
         {
             let inner_rc = Rc::clone(&self.inner);
 
-            let func =
-                Closure::<dyn FnMut()>::new(move || {
-                    inner_rc.borrow_mut().on_time_elapsed();
-                });
+            let func = Closure::<dyn FnMut()>::new(move || {
+                inner_rc.borrow_mut().on_time_elapsed();
+            });
             js_sys::Reflect::set(
                 glue.as_ref(),
                 &JsValue::from_str("onTimeElapsed"),
                 func.as_ref().unchecked_ref(),
             )
-                .unwrap();
+            .unwrap();
             func.forget();
         }
 
@@ -362,7 +359,9 @@ impl ClientInner {
     fn on_datachannel_close(&mut self, channel_id: DatachannelId) {
         console::log_1(&format!("data channel {channel_id} closed").into());
 
-        let Some(task) = self.task.as_mut() else { return; };
+        let Some(task) = self.task.as_mut() else {
+            return;
+        };
 
         if channel_id == self.handshake_channel {
             task.reset_substream(&channel_id);
@@ -372,7 +371,9 @@ impl ClientInner {
     fn on_datachannel_error(&mut self, channel_id: DatachannelId, msg: js_sys::JsString) {
         console::log_1(&format!("data channel {channel_id} error: {msg}").into());
 
-        let Some(task) = self.task.as_mut() else { return; };
+        let Some(task) = self.task.as_mut() else {
+            return;
+        };
 
         if channel_id == self.handshake_channel {
             task.reset_substream(&channel_id);
@@ -387,7 +388,9 @@ impl ClientInner {
 
         match self.perf_framing.read_write(rw) {
             Ok(mut framing) => {
-                let Some(stream) = self.perf_stream.take() else { return; };
+                let Some(stream) = self.perf_stream.take() else {
+                    return;
+                };
                 self.perf_stream = stream.read_write(&mut framing);
             }
             Err(err) => {
@@ -404,16 +407,19 @@ impl ClientInner {
             Ok(sent) => {
                 rw.write_bytes_queued = rw.write_bytes_queued.saturating_sub(sent);
                 rw.write_bytes_queueable = Some(rw.write_bytes_queueable.unwrap_or(0) + sent);
-            },
+            }
             Err(SendError::SendQueueFull(sent)) => {
                 // FIXME: DRY
                 rw.write_bytes_queued = rw.write_bytes_queued.saturating_sub(sent);
                 rw.write_bytes_queueable = Some(rw.write_bytes_queueable.unwrap_or(0) + sent);
 
-                console::log_1(&format!(
-                    "ClientInner::on_message(channel_id={channel_id}): send queue is full"
-                ).into());
-            },
+                console::log_1(
+                    &format!(
+                        "ClientInner::on_message(channel_id={channel_id}): send queue is full"
+                    )
+                    .into(),
+                );
+            }
             Err(SendError::Unknown(msg)) => {
                 console::log_1(&format!(
                     "ClientInner::on_message(channel_id={channel_id}): unknown send error: {msg}"
@@ -421,7 +427,9 @@ impl ClientInner {
             }
         }
 
-        let Some(stream) = self.perf_stream.take() else { return; };
+        let Some(stream) = self.perf_stream.take() else {
+            return;
+        };
         match (stream.upload_duration, stream.download_duration) {
             (Some(upload_duration), Some(download_duration)) => {
                 let ud = upload_duration.as_secs_f64();
@@ -429,7 +437,7 @@ impl ClientInner {
 
                 if let Err(e) = sendResults(ud, dd) {
                     console::log_1(
-                        &format!("ClientInner::on_message(): sendResults() failed: {:?}", e).into()
+                        &format!("ClientInner::on_message(): sendResults() failed: {:?}", e).into(),
                     );
                 }
             }
@@ -449,7 +457,10 @@ impl ClientInner {
         while rw.wake_up_after.map_or(false, |wua| rw.now >= wua) {
             /* arbitrarily chosen 5 MB */
             if total_sent >= 5242880 {
-                console::log_1(&"ClientInner::on_time_elapsed(): sent 5 MB, waiting for send queue to drain".into());
+                console::log_1(
+                    &"ClientInner::on_time_elapsed(): sent 5 MB, waiting for send queue to drain"
+                        .into(),
+                );
                 return;
             }
 
@@ -471,9 +482,10 @@ impl ClientInner {
                 }
                 Err(err) => {
                     if !matches!(err, Error::RemoteResetDesired) {
-                        console::log_1(&format!(
-                            "ClientInner::on_time_elapsed(): framing error: {err:?}"
-                        ).into());
+                        console::log_1(
+                            &format!("ClientInner::on_time_elapsed(): framing error: {err:?}")
+                                .into(),
+                        );
                     }
                     return;
                 }
@@ -484,21 +496,22 @@ impl ClientInner {
                     rw.write_bytes_queued = rw.write_bytes_queued.saturating_sub(sent);
                     rw.write_bytes_queueable = Some(rw.write_bytes_queueable.unwrap_or(0) + sent);
                     total_sent += sent;
-                },
+                }
                 Err(SendError::SendQueueFull(sent)) => {
                     // FIXME: DRY
                     rw.write_bytes_queued = rw.write_bytes_queued.saturating_sub(sent);
                     rw.write_bytes_queueable = Some(rw.write_bytes_queueable.unwrap_or(0) + sent);
 
-                    console::log_1(&
-                        "ClientInner::on_time_elapsed(): send queue full, pausing sending"
-                    .into());
+                    console::log_1(
+                        &"ClientInner::on_time_elapsed(): send queue full, pausing sending".into(),
+                    );
                     return;
-                },
+                }
                 Err(SendError::Unknown(msg)) => {
-                    console::log_1(&format!(
-                        "ClientInner::on_time_elapsed(): unknown send error: {msg}"
-                    ).into());
+                    console::log_1(
+                        &format!("ClientInner::on_time_elapsed(): unknown send error: {msg}")
+                            .into(),
+                    );
                     return;
                 }
             }
@@ -509,7 +522,9 @@ impl ClientInner {
     }
 
     fn drive_handshake(&mut self, channel_id: DatachannelId, data: &[u8]) {
-        let Some(task) = self.task.as_mut() else { return; };
+        let Some(task) = self.task.as_mut() else {
+            return;
+        };
         let rw = &mut self.handshake_rw;
         rw.incoming_buffer.extend_from_slice(data);
         rw.now = Instant::now();
@@ -525,17 +540,20 @@ impl ClientInner {
                     self.perf_channel = Some(n.as_f64().unwrap() as DatachannelId);
                 }
                 Err(err) => {
-                    console::log_1(&format!(
-                        "ClientInner::drive_handshake(): createDatachannel() failed: {err:?}"
-                    ).into());
+                    console::log_1(
+                        &format!(
+                            "ClientInner::drive_handshake(): createDatachannel() failed: {err:?}"
+                        )
+                        .into(),
+                    );
                 }
             }
         }
 
         if let Err(SendError::Unknown(msg)) = send(channel_id, rw.write_buffers.as_mut()) {
-            console::log_1(&format!(
-                "ClientInner::drive_handshake(): unknown send error: {msg}"
-            ).into());
+            console::log_1(
+                &format!("ClientInner::drive_handshake(): unknown send error: {msg}").into(),
+            );
         }
     }
 }
