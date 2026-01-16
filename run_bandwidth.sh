@@ -1,5 +1,4 @@
-#!/opt/homebrew/bin/bash
-##!/bin/bash
+#!/usr/bin/env bash
 
 declare -A results_upload_smoldot_litep2p_webrtc
 declare -A results_download_smoldot_litep2p_webrtc
