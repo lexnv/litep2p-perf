@@ -21,7 +21,7 @@ declare -A results_download_libp2p_litep2p_webrtc
 declare -A results_upload_litep2p_libp2p_tcp
 declare -A results_download_litep2p_libp2p_tcp
 
-SLEEP_TIME=1
+SLEEP_TIME=5
 
 #         0    1    2    3    4     5     6      7      8      9       10     11      12      13       14      15        16       17        18        19         20
 VALUES="1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304 8388608 16777216 33554432 67108864 134217728 268435456 536870912 1073741824"
@@ -108,7 +108,7 @@ SERVER_PID=$!
 echo "Running bandwidth test with libp2p (WebRTC). Server pid $SERVER_PID..."
 
 # Wait for the server to start listening on the address.
-sleep $((SLEEP_TIME * 5))
+sleep $SLEEP_TIME
 
 CERT_HASH=$(grep "/certhash/" server.log | cut -d '/' -f 8 | cut -d ' ' -f 1 | head -n 1)
 
@@ -176,7 +176,7 @@ SERVER_PID=$!
 
 echo "Running bandwidth test libp2p -> litep2p (WebRTC). Server pid $SERVER_PID..."
 # Wait for the server to start listening on the address.
-sleep $((SLEEP_TIME * 5))
+sleep $SLEEP_TIME
 
 CERT_HASH=$(grep "/certhash/" server.log | cut -d '/' -f 8 | cut -d ' ' -f 1 | head -n 1)
 
@@ -251,7 +251,7 @@ SERVER_PID=$!
 
 echo "Running bandwidth test smoldot -> litep2p (WebRTC). Server pid $SERVER_PID..."
 # Wait for the server to start listening on the address.
-sleep $((SLEEP_TIME * 5))
+sleep $SLEEP_TIME
 
 CERT_HASH=$(grep "/certhash/" server.log | cut -d '/' -f 8 | cut -d ' ' -f 1 | head -n 1)
 cd ..

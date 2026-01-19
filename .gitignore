@@ -2,3 +2,6 @@ litep2p/target
 libp2p/target
 utils/target
 /target
+server.log
+*/server.log
+.idea
