@@ -2182,7 +2182,7 @@ checksum = "23fb14cb19457329c82206317a5663005a4d404783dc74f4252769b0d5f42856"
 [[package]]
 name = "litep2p"
 version = "0.14.0"
-source = "git+https://github.com/paritytech/litep2p?branch=master#734e9e886b6235837004b1ab35892cffdcdd0572"
+source = "git+https://github.com/paritytech/litep2p?branch=lexnv%2Ftest-webrtc-all#9c58647aa59fb920cdc00944c5f96104e760b279"
 dependencies = [
  "async-trait",
  "bs58",
