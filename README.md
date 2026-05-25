@@ -93,6 +93,8 @@ RUST_LOG=info cargo run -- client --server-address "/ip6/::1/tcp/33333/p2p/12D3K
 
 A Go client that uses `go-libp2p` with the `webrtc-direct` transport to talk to the litep2p WebRTC server.
 
+The implementation was tested with go v1.26.3.
+
 Start the litep2p server with WebRTC:
 
 ```bash
