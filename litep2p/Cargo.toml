@@ -13,4 +13,10 @@ futures = "0.3.28"
 
 litep2p = { version = "0.14.3", features = ["websocket", "webrtc"] }
 
+# Deterministic WebRTC DTLS certificate derivation (RFC 6979 ECDSA P-256).
+p256 = { version = "0.13", features = ["ecdsa", "pkcs8"] }
+x509-cert = { version = "0.2", features = ["builder"] }
+# `oid` exposes the SHA-256 OID needed to build the ecdsa-with-SHA256 cert signature algorithm.
+sha2 = { version = "0.10", features = ["oid"] }
+
 utils = { path = "../utils" }

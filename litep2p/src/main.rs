@@ -3,6 +3,7 @@ use clap::Parser as ClapParser;
 use utils::Command;
 
 mod perf;
+mod webrtc_cert;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,6 +25,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             let secret_key = litep2p::crypto::ed25519::SecretKey::try_from_bytes(&mut bytes)?;
+            // Capture the secret before `secret_key` is moved into the keypair, so
+            // the WebRTC certhash can be derived deterministically from it below.
+            let webrtc_secret = secret_key.to_bytes();
             let mut litep2p_config = litep2p::config::ConfigBuilder::new()
                 .with_keypair(secret_key.into())
                 .with_user_protocol(Box::new(perf));
@@ -54,12 +58,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     tracing::info!("Using WebSocket transport layer");
                 }
                 utils::TransportLayer::WebRTC => {
+                    // Derive the DTLS certificate deterministically from the node
+                    // secret so the advertised certhash is stable across restarts.
+                    let certificate = webrtc_cert::derive_certificate(&webrtc_secret)?;
+
                     litep2p_config =
                         litep2p_config.with_webrtc(litep2p::transport::webrtc::config::Config {
                             listen_addresses: vec![server_opts
                                 .listen_address
                                 .parse()
                                 .expect("Valid listen address")],
+                            certificate: Some(certificate),
                             ..Default::default()
                         });
                     tracing::info!("Using WebRTC transport layer");
