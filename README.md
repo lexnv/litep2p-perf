@@ -89,6 +89,34 @@ RUST_LOG=info cargo run -- server --listen-address "/ip6/::/tcp/33333" --node-ke
 RUST_LOG=info cargo run -- client --server-address "/ip6/::1/tcp/33333/p2p/12D3KooWBpZHDZu7YSbvPaPXKhkRNJvR7MkTJMQQAVBKx9mCqz3q" --upload-bytes 1024 --download-bytes 0
 ```
 
+### Go libp2p WebRTC client
+
+A Go client that uses `go-libp2p` with the `webrtc-direct` transport to talk to the litep2p WebRTC server.
+
+The implementation was tested with go v1.26.3.
+
+Start the litep2p server with WebRTC:
+
+```bash
+RUST_LOG=info cargo run -p litep2p-perf -- server \
+  --listen-address "/ip4/0.0.0.0/udp/33333/webrtc" \
+  --node-key "secret" \
+  --transport-layer webrtc
+```
+
+The server logs a multiaddr that includes `/webrtc/certhash/.../p2p/<peer-id>`. Use it for the client:
+
+```bash
+cd libp2p-go
+go mod tidy
+go run . \
+  --server-address "/ip4/127.0.0.1/udp/33333/webrtc/certhash/<HASH>/p2p/<PEER_ID>" \
+  --upload-bytes 1048576 \
+  --download-bytes 1048576
+```
+
+**Note on multiaddr codes.** litep2p tags its server-listenable WebRTC transport with the `/webrtc` multiaddr (code 281), whereas go-libp2p uses `/webrtc-direct` (code 280) for the equivalent server-listenable transport. The underlying wire protocol is the same libp2p webrtc-direct spec, so this client rewrites `/webrtc` to `/webrtc-direct` before handing the address to go-libp2p. You can pass either form on the command line.
+
 ## Time to Open Substreams
 
 ### Server
